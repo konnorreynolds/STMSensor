@@ -8,10 +8,12 @@
 #include "string.h"
 #include "usbd_cdc_if.h"
 #include "gpio.h"
+#include "stdbool.h"
+
+USBD_StatusTypeDef status;
 
 USBD_StatusTypeDef USBWrite(uint8_t *txData) {
 	uint16_t len = strlen((char*)txData);
-	USBD_StatusTypeDef status;
 	// Keep trying until it's not busy
 	    do {
 	        status = CDC_Transmit_FS(txData, len);
@@ -23,7 +25,6 @@ USBD_StatusTypeDef USBWrite(uint8_t *txData) {
 	if (status == USBD_OK) {
 		return status;
 	} else {
-		HAL_GPIO_WritePin(LED_BUILTIN, GPIO_PIN_SET);
 		return status;
 	}
 }
@@ -42,10 +43,14 @@ USBD_StatusTypeDef SendSensorUSB(uint16_t distance) {
     char distance_str[10];
 
     // Convert distance to string
-    snprintf(distance_str, sizeof(distance_str), "%u", distance / 1000);
+    snprintf(distance_str, sizeof(distance_str), "%u", distance);
 
     // Create full message
-    snprintf((char*)buffer, sizeof(buffer), "Distance: %s m\r\n", distance_str);
+    snprintf((char*)buffer, sizeof(buffer), "Distance: %smm\r\n", distance_str);
 
     return USBWrite(buffer);
+}
+
+USBD_StatusTypeDef USBStatus() {
+	return status;
 }

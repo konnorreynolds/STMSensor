@@ -11,6 +11,6 @@
 HAL_StatusTypeDef USBWrite(uint8_t *txData);
 HAL_StatusTypeDef SendMessageUSB(const char *msg);
 HAL_StatusTypeDef SendSensorUSB(uint16_t distance);
-
+USBD_StatusTypeDef USBStatus();
 
 #endif /* INC_USB_H_ */
