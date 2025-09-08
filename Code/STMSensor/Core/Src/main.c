@@ -105,13 +105,14 @@ int main(void)
   /* Attempt to initialize the VL53L0X sensor on I2C bus 1
   * This checks if sensor is connected and responding with correct ID (0xEE) */
   if (VL53L0X_Init(&hi2c1) == HAL_OK) {
-     /* Sensor found and initialized successfully */
-     SendMessageUSB("VL53L0X Sensor Initialize Success...\n");
+	 /* Sensor found and initialized successfully */
+	 SendMessageUSB("VL53L0X Sensor Initialize Success...\n\0");
+	 sensorOK = 1; // Sensor is detected online.
   } else {
-     /* Sensor initialization failed - either not connected, wrong wiring,
-      * or not a VL53L0X sensor (wrong ID) */
-     SendMessageUSB("VL53L0X Sensor Initialize Fail...\n");
-     initError = 1;  // Set error flag to track initialization failure
+	 /* Sensor initialization failed - either not connected, wrong wiring,
+	  * or not a VL53L0X sensor (wrong ID) */
+	 SendMessageUSB("VL53L0X Sensor Initialize Fail...\n\0");
+	 initError = 1;  // Set error flag to track initialization failure
   }
   /* USER CODE END 2 */
 
@@ -141,7 +142,7 @@ int main(void)
 	         if (VL53L0X_Init(&hi2c1) == HAL_OK) {
 	             sensorOK = 1;  // Sensor is back online
 	             initError = 0;
-	             SendMessageUSB("Sensor reconnected\n");
+	             SendMessageUSB("Sensor reconnected\n\0");
 	         }
 	     }
 	  }
@@ -161,7 +162,7 @@ int main(void)
 	     } else {
 	         /* Sensor read failed - mark as not working */
 	         sensorOK = 0;
-	         SendMessageUSB("Sensor read failed\n");
+	         SendMessageUSB("Sensor read failed\n\0");
 	     }
 	  }
 
@@ -183,9 +184,9 @@ int main(void)
 	     HAL_GPIO_WritePin(LED_BUILTIN, GPIO_PIN_SET);
 
 	     /* Print which system failed for debugging */
-	     if (!sensorOK) SendMessageUSB("ERROR: Sensor\n");
-	     if (!usbOK)    SendMessageUSB("ERROR: USB\n");
-	     if (!canOK)    SendMessageUSB("ERROR: CAN\n");
+	     if (!sensorOK) SendMessageUSB("ERROR: Sensor\n\0");
+	     if (!usbOK)    SendMessageUSB("ERROR: USB\n\0");
+	     if (!canOK)    SendMessageUSB("ERROR: CAN\n\0");
 	  }
 
 	  /* Wait 20ms before next loop iteration
