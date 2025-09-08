@@ -152,7 +152,7 @@ int main(void)
 
 	     if (distance != DISTANCE_ERROR) {
 	         /* Valid reading - try to send over USB */
-	         if (SendSensorUSB(distance) != HAL_OK) {
+	         if (SendSensorUSB(distance) != USBD_OK) {
 	             usbOK = 0;  // USB transmission failed
 	         } else {
 	             usbOK = 1;  // USB working fine
