@@ -1,8 +1,10 @@
-/* VL53L0X.h - VL53L0X ToF (Time of Flight) Sensor Header 
- * 
- * The VL53L0X measures distance by sending invisible laser light
- * and timing how long it takes to bounce back
- * 
+/*
+ * VL53L0X.
+ *
+ *  Created on: Sep 7, 2024
+ *      Author: Konnor Reynolds
+ *  Description: VL53L0X ToF Sensor Implementation
+ *
  * Connection to STM32 BluePill:
  * VL53L0X VIN -> 3.3V
  * VL53L0X GND -> GND  

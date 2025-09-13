@@ -1,0 +1,13 @@
+../Core/Src/uart.c:38:13:sendUARTFrame	6
+../Core/Src/uart.c:72:6:UARTWrite	1
+../Core/Src/uart.c:89:6:UARTSendMessage	2
+../Core/Src/uart.c:112:6:UARTSendSensor	1
+../Core/Src/uart.c:129:6:UARTPrintf	2
+../Core/Src/uart.c:154:6:UARTSendData	3
+../Core/Src/uart.c:176:9:isUARTReady	5
+../Core/Src/uart.c:208:9:UARTok	1
+../Core/Src/uart.c:219:23:UARTStatus	2
+../Core/Src/uart.c:233:6:UARTClearErrors	3
+../Core/Src/uart.c:264:10:UARTReceiveAvailable	7
+../Core/Src/uart.c:294:9:UARTReceive	4
+../Core/Src/uart.c:313:19:UARTGetLastStatus	1

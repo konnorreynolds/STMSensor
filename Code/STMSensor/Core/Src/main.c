@@ -18,14 +18,16 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "usb.h"
-#include "gpio.h"
+#include "can.h"
+#include "uart.h"
+#include "message_handler.h"
 #include "vl53l0x.h"
+#include "gpio.h"
 #include "stdbool.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,7 +37,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,14 +45,16 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CAN_HandleTypeDef hcan;
+
 I2C_HandleTypeDef hi2c1;
+
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 /* Error tracking - using simple flags for each system */
 static uint8_t initError = 0;      // Set to 1 if initial sensor setup fails
 static uint8_t sensorOK = 0;       // Sensor working flag (0 = error, 1 = working)
-static uint8_t usbOK = 1;          // USB working flag (assume OK initially)
-static uint8_t canOK = 1;          // CAN working flag (assume OK initially)
 static uint8_t reconnectTimer = 0; // Timer for reconnection attempts (counts loops)
 
 /* USER CODE END PV */
@@ -60,6 +63,8 @@ static uint8_t reconnectTimer = 0; // Timer for reconnection attempts (counts lo
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_CAN_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -98,20 +103,22 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USB_DEVICE_Init();
   MX_I2C1_Init();
+  MX_CAN_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  //CAN_ControllerInit(&hcan);
 
   /* Attempt to initialize the VL53L0X sensor on I2C bus 1
   * This checks if sensor is connected and responding with correct ID (0xEE) */
   if (VL53L0X_Init(&hi2c1) == HAL_OK) {
 	 /* Sensor found and initialized successfully */
-	 SendMessageUSB("VL53L0X Sensor Initialize Success...\n\0");
+	 SendMessage("VL53L0X Sensor Initialize Success...\n\0");
 	 sensorOK = 1; // Sensor is detected online.
   } else {
 	 /* Sensor initialization failed - either not connected, wrong wiring,
 	  * or not a VL53L0X sensor (wrong ID) */
-	 SendMessageUSB("VL53L0X Sensor Initialize Fail...\n\0");
+	 SendMessage("VL53L0X Sensor Initialize Fail...\n\0");
 	 initError = 1;  // Set error flag to track initialization failure
   }
   /* USER CODE END 2 */
@@ -142,7 +149,7 @@ int main(void)
 	         if (VL53L0X_Init(&hi2c1) == HAL_OK) {
 	             sensorOK = 1;  // Sensor is back online
 	             initError = 0;
-	             SendMessageUSB("Sensor reconnected\n\0");
+	             SendMessage("Sensor reconnected\n\0");
 	         }
 	     }
 	  }
@@ -153,29 +160,19 @@ int main(void)
 
 	     if (distance != DISTANCE_ERROR) {
 	         /* Valid reading - try to send over USB */
-	         if (SendSensorUSB(distance) != USBD_OK) {
-	             usbOK = 0;  // USB transmission failed
-	         } else {
-	             usbOK = 1;  // USB working fine
-	         }
-	         // TODO Add CAN Imple
+	         SendSensor(distance);
 	     } else {
 	         /* Sensor read failed - mark as not working */
 	         sensorOK = 0;
-	         SendMessageUSB("Sensor read failed\n\0");
+	         SendMessage("Sensor read failed\n\0");
 	     }
-	  }
-
-	  /* Check USB connection health (optional - implement based on your USB stack) */
-	  if (USBStatus() != USBD_OK) {
-	     usbOK = 0;  // USB disconnected or not ready
 	  }
 
 	  /* LED Status Indicator (Pull-Up: LOW = ON, HIGH = OFF)
 	  * Different patterns for different states:
 	  * - All OK: LED ON (solid)
 	  * - Any error: LED OFF */
-	  if (sensorOK && usbOK && canOK) {
+	  if (sensorOK && UARTok() && CANok()) {
 	     /* Everything working - LED ON */
 	     HAL_GPIO_WritePin(LED_BUILTIN, GPIO_PIN_RESET);
 	  } else {
@@ -184,9 +181,9 @@ int main(void)
 	     HAL_GPIO_WritePin(LED_BUILTIN, GPIO_PIN_SET);
 
 	     /* Print which system failed for debugging */
-	     if (!sensorOK) SendMessageUSB("ERROR: Sensor\n\0");
-	     if (!usbOK)    SendMessageUSB("ERROR: USB\n\0");
-	     if (!canOK)    SendMessageUSB("ERROR: CAN\n\0");
+	     if (!sensorOK) SendMessage("ERROR: Sensor\n\0");
+	     if (!UARTok())    SendMessage("ERROR: Serial UART\n\0");
+	     if (!CANok())    SendMessage("ERROR: CAN\n\0");
 	  }
 
 	  /* Wait 20ms before next loop iteration
@@ -207,7 +204,6 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -218,7 +214,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -233,16 +229,47 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
-  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+}
+
+/**
+  * @brief CAN Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CAN_Init(void)
+{
+
+  /* USER CODE BEGIN CAN_Init 0 */
+
+  /* USER CODE END CAN_Init 0 */
+
+  /* USER CODE BEGIN CAN_Init 1 */
+
+  /* USER CODE END CAN_Init 1 */
+  hcan.Instance = CAN1;
+  hcan.Init.Prescaler = 16;
+  hcan.Init.Mode = CAN_MODE_NORMAL;
+  hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
+  hcan.Init.TimeSeg1 = CAN_BS1_1TQ;
+  hcan.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan.Init.TimeTriggeredMode = DISABLE;
+  hcan.Init.AutoBusOff = DISABLE;
+  hcan.Init.AutoWakeUp = DISABLE;
+  hcan.Init.AutoRetransmission = DISABLE;
+  hcan.Init.ReceiveFifoLocked = DISABLE;
+  hcan.Init.TransmitFifoPriority = DISABLE;
+  if (HAL_CAN_Init(&hcan) != HAL_OK)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN CAN_Init 2 */
+
+  /* USER CODE END CAN_Init 2 */
+
 }
 
 /**
@@ -276,6 +303,39 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 

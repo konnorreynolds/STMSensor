@@ -1,4 +1,0 @@
-../Core/Src/usb.c:24:20:USBWrite	24	static
-../Core/Src/usb.c:47:20:SendMessageUSB	280	static
-../Core/Src/usb.c:63:20:SendSensorUSB	288	static
-../Core/Src/usb.c:82:20:USBStatus	4	static

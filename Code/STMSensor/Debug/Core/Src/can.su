@@ -1,0 +1,9 @@
+../Core/Src/can.c:43:13:sendCANFrame	48	static
+../Core/Src/can.c:82:6:CAN_ControllerInit	56	static
+../Core/Src/can.c:109:6:CANWrite	32	static
+../Core/Src/can.c:129:6:CANSendMessage	40	static
+../Core/Src/can.c:160:6:CANSendSensor	48	static
+../Core/Src/can.c:175:6:CANSetID	16	static
+../Core/Src/can.c:185:9:isCANReady	16	static
+../Core/Src/can.c:211:9:CANok	4	static
+../Core/Src/can.c:221:22:CANStatus	8	static

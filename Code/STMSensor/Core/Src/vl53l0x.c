@@ -1,10 +1,9 @@
-/* VL53L0X.c - VL53L0X ToF Sensor Implementation 
- * 
- * The sensor works by:
- * 1. Sending out a laser pulse
- * 2. Measuring time until it bounces back
- * 3. Calculating distance using speed of light
- * 4. Giving us the answer in millimeters
+/*
+ * VL53L0X.c
+ *
+ *  Created on: Sep 7, 2024
+ *      Author: Konnor Reynolds
+ *  Description: VL53L0X ToF Sensor Implementation
  */
 
 #include "VL53L0X.h"

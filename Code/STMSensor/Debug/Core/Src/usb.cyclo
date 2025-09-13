@@ -1,4 +1,0 @@
-../Core/Src/usb.c:24:20:USBWrite	3
-../Core/Src/usb.c:47:20:SendMessageUSB	1
-../Core/Src/usb.c:63:20:SendSensorUSB	1
-../Core/Src/usb.c:82:20:USBStatus	1
